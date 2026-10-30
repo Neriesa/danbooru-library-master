@@ -1,0 +1,54 @@
+name: release
+
+# Метка вида v1.3.0 собирает .exe и публикует его на странице Releases.
+# A tag like v1.3.0 builds the .exe and publishes it on the Releases page.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check that the tag matches APP_VERSION
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          if (-not (Select-String -Path dlm/constants.py -SimpleMatch "APP_VERSION = `"$version`"")) {
+            throw "Tag $version does not match APP_VERSION in dlm/constants.py"
+          }
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+      - name: Run tests
+        run: python -m unittest discover -s tests -t .
+      - name: Build
+        run: >
+          pyinstaller --noconfirm --clean --windowed --onefile --name DanbooruLibraryMaster
+          --icon icon.ico --add-data "icon.ico;."
+          --hidden-import dlm.random_viewer --hidden-import dlm.browse --hidden-import dlm.app_paths
+          --hidden-import dlm.locale_en --hidden-import keyring.backends.Windows
+          --exclude-module matplotlib --exclude-module scipy --exclude-module pandas --exclude-module IPython
+          danbooru_library_master.py
+      - name: Self-check the build
+        shell: pwsh
+        run: |
+          Start-Process dist/DanbooruLibraryMaster.exe -ArgumentList "--selftest" -Wait
+          Get-Content "$env:LOCALAPPDATA/DanbooruLibraryMaster/selftest.txt"
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/DanbooruLibraryMaster.exe -Algorithm SHA256).Hash
+          "$hash  DanbooruLibraryMaster.exe" | Out-File dist/SHA256SUMS.txt -Encoding ascii
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" dist/DanbooruLibraryMaster.exe dist/SHA256SUMS.txt --generate-notes

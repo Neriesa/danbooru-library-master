@@ -1,0 +1,18 @@
+# сборка / build
+dist/
+build/
+.venv_build/
+.venv/
+*.spec
+*.exe
+__pycache__/
+*.pyc
+
+# личные данные - никогда не коммитить / personal data - never commit
+config.json
+*.db
+*.db-wal
+*.db-shm
+*.log
+selftest.txt
+.env

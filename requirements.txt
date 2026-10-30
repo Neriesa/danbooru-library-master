@@ -1,0 +1,7 @@
+requests>=2.28
+numpy>=1.24
+Pillow>=10.0
+# нужен только для видео / needed only for video playback
+opencv-python-headless>=4.8
+# необязательно: хранить API-ключ в Windows Credential Manager / optional: store the API key in the system keyring
+keyring>=24.0
